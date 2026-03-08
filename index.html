@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Temático Jerárquico — Neurorrehabilitación Motora en EP</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c0: #1B3F6E;
+  --c1: #8B1A2B;
+  --c2: #7B4A00;
+  --c3: #1A5C3A;
+  --c4: #4A1A6E;
+  --c5: #2A5A6E;
+  --c6: #5C3A1A;
+  --bg: #F7F4EF;
+  --paper: #FFFDF9;
+  --rule: #D8D0C8;
+  --ink: #1a1a1a;
+  --muted: #777;
+  --rad: 10px;
+  --shadow: 0 4px 18px rgba(0,0,0,0.09), 0 1px 5px rgba(0,0,0,0.05);
+  --shadow-h: 0 10px 36px rgba(0,0,0,0.15), 0 3px 10px rgba(0,0,0,0.07);
+  --tr: 0.36s cubic-bezier(.4,0,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Source Serif 4',Georgia,serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;}
+
+/* HEADER */
+header{background:var(--c0);color:#fff;text-align:center;padding:44px 24px 32px;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-55deg,transparent,transparent 18px,rgba(255,255,255,.03) 18px,rgba(255,255,255,.03) 36px);}
+.h-tag{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px;}
+header h1{font-family:'Playfair Display',serif;font-size:clamp(22px,4vw,40px);font-weight:800;line-height:1.15;margin-bottom:8px;}
+header h2{font-size:clamp(12px,1.8vw,16px);font-weight:300;font-style:italic;color:rgba(255,255,255,.7);margin-bottom:18px;}
+.h-rule{width:64px;height:2.5px;background:rgba(255,255,255,.35);margin:0 auto;}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 20px;padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--rule);}
+.leg{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+.tip{text-align:center;padding:12px;font-size:12.5px;color:var(--muted);font-style:italic;border-bottom:1px solid var(--rule);}
+
+/* TREE WRAPPER */
+.tree-wrap{max-width:1300px;margin:0 auto;padding:40px 20px 60px;overflow-x:auto;}
+
+/* TREE is built with nested ULs */
+.tree{list-style:none;}
+
+/* ROOT NODE */
+.tree > li{display:flex;flex-direction:column;align-items:center;}
+
+/* LEVEL CONTAINERS */
+ul.children{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:24px;margin-top:0;padding-top:0;position:relative;}
+
+/* Vertical line from parent down to horizontal bar */
+.v-line{width:2px;height:32px;background:var(--rule);margin:0 auto;flex-shrink:0;}
+/* Horizontal bar above children */
+.h-bar-wrap{display:flex;align-items:flex-start;position:relative;width:100%;}
+.h-bar{height:2px;background:var(--rule);position:absolute;top:0;left:50%;transform:translateX(-50%);}
+
+/* Each child branch */
+.branch{display:flex;flex-direction:column;align-items:center;}
+.branch-vline-top{width:2px;height:24px;background:var(--rule);margin:0 auto;}
+.branch-vline-bot{width:2px;height:24px;background:var(--rule);margin:0 auto;}
+
+/* NODE CARD */
+.node{background:var(--paper);border-radius:var(--rad);box-shadow:var(--shadow);border:1px solid var(--rule);cursor:pointer;transition:box-shadow var(--tr),transform var(--tr);position:relative;overflow:hidden;min-width:220px;max-width:320px;}
+.node:hover{box-shadow:var(--shadow-h);transform:translateY(-3px);}
+.node.open{box-shadow:var(--shadow-h);transform:translateY(-2px);}
+.node::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
+.node.l0::before{background:var(--c0);}
+.node.l1a::before{background:var(--c1);}
+.node.l1b::before{background:var(--c2);}
+.node.l1c::before{background:var(--c3);}
+.node.l1d::before{background:var(--c4);}
+.node.l2a::before,.node.l2a2::before{background:var(--c1);}
+.node.l2b::before,.node.l2b2::before{background:var(--c2);}
+.node.l2c::before,.node.l2c2::before,.node.l2c3::before,.node.l2c4::before{background:var(--c3);}
+.node.l2d::before,.node.l2d2::before,.node.l2d3::before,.node.l2d4::before{background:var(--c4);}
+
+/* Header inside node */
+.nh{padding:14px 16px 12px;display:flex;align-items:flex-start;gap:10px;}
+.nn{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;opacity:.15;line-height:1;flex-shrink:0;user-select:none;}
+.nt{flex:1;}
+.nc{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:3px;opacity:.7;}
+.ntitle{font-family:'Playfair Display',serif;font-size:clamp(13px,1.8vw,16px);font-weight:700;line-height:1.25;}
+.ntog{flex-shrink:0;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid currentColor;font-size:13px;transition:transform var(--tr);opacity:.45;margin-top:1px;}
+.node.open .ntog{transform:rotate(45deg);opacity:.9;}
+
+/* Preview */
+.nprev{padding:0 16px 14px;font-size:12.5px;line-height:1.6;color:#555;border-top:1px solid var(--rule);}
+
+/* Body */
+.nbody{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.4,0,.2,1);}
+.node.open .nbody{max-height:800px;}
+.ncontent{padding:14px 16px 16px;border-top:1px solid var(--rule);}
+
+/* Item */
+.ig{margin-bottom:13px;}.ig:last-child{margin-bottom:0;}
+.igt{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:500;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--rule);}
+.it{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:12.5px;line-height:1.5;color:#333;border-bottom:1px dotted #E5E0D8;}
+.it:last-child{border-bottom:none;}
+.ib{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:6px;}
+
+/* Level color helpers */
+.l0 .nn,.l0 .nc{color:var(--c0);}.l0 .ib{background:var(--c0);}
+.l1a .nn,.l1a .nc{color:var(--c1);}.l1a .ib{background:var(--c1);}
+.l1b .nn,.l1b .nc{color:var(--c2);}.l1b .ib{background:var(--c2);}
+.l1c .nn,.l1c .nc{color:var(--c3);}.l1c .ib{background:var(--c3);}
+.l1d .nn,.l1d .nc{color:var(--c4);}.l1d .ib{background:var(--c4);}
+.l2a .nn,.l2a .nc,.l2a2 .nn,.l2a2 .nc{color:var(--c1);}.l2a .ib,.l2a2 .ib{background:var(--c1);}
+.l2b .nn,.l2b .nc,.l2b2 .nn,.l2b2 .nc{color:var(--c2);}.l2b .ib,.l2b2 .ib{background:var(--c2);}
+.l2c .nn,.l2c .nc,.l2c2 .nn,.l2c2 .nc,.l2c3 .nn,.l2c3 .nc,.l2c4 .nn,.l2c4 .nc{color:var(--c3);}.l2c .ib,.l2c2 .ib,.l2c3 .ib,.l2c4 .ib{background:var(--c3);}
+.l2d .nn,.l2d .nc,.l2d2 .nn,.l2d2 .nc,.l2d3 .nn,.l2d3 .nc,.l2d4 .nn,.l2d4 .nc{color:var(--c4);}.l2d .ib,.l2d2 .ib,.l2d3 .ib,.l2d4 .ib{background:var(--c4);}
+
+/* SYNTHESIS */
+.synth-wrap{max-width:960px;margin:8px auto 0;padding:0 20px 48px;}
+.synth{background:var(--c0);color:#fff;border-radius:var(--rad);padding:28px 32px;display:grid;grid-template-columns:auto 1fr;gap:24px;box-shadow:var(--shadow);}
+.synth-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'Playfair Display',serif;font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.45;white-space:nowrap;}
+.synth-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:12px;color:rgba(255,255,255,.95);}
+.synth-text{font-size:13.5px;line-height:1.8;color:rgba(255,255,255,.8);font-style:italic;}
+.synth-text strong{color:#fff;font-style:normal;}
+
+/* SEPARATORS */
+.sep{display:flex;justify-content:center;align-items:center;gap:10px;margin:6px 0;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;}
+.sep-line{height:1px;width:60px;background:linear-gradient(to right,transparent,var(--rule),transparent);}
+
+/* ENTRANCE ANIM */
+.node{opacity:0;animation:fadeUp .5s ease forwards;}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0);}}
+.node.l0{animation-delay:.05s;}
+.branch:nth-child(1) .node.l1a,.branch:nth-child(1) .node.l1b{animation-delay:.15s;}
+.branch:nth-child(2) .node.l1a,.branch:nth-child(2) .node.l1b{animation-delay:.22s;}
+.branch:nth-child(3) .node.l1c{animation-delay:.29s;}
+.branch:nth-child(4) .node.l1d{animation-delay:.36s;}
+
+footer{text-align:center;padding:22px 24px;font-size:10.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;border-top:1px solid var(--rule);letter-spacing:.04em;}
+
+@media(max-width:700px){
+  ul.children{flex-direction:column;align-items:center;}
+  .h-bar{display:none;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="h-tag">Mapa Temático · Estructura Jerárquica · Teoría Fundamentada</p>
+  <h1>Mapa Temático Jerárquico</h1>
+  <h2>Neurorrehabilitación Motora en la Enfermedad de Parkinson</h2>
+  <div class="h-rule"></div>
+</header>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:var(--c0)"></div>Tema Central</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c1)"></div>Condiciones Causales</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c2)"></div>Contexto Interviniente</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c3)"></div>Estrategias de Acción</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c4)"></div>Consecuencias</div>
+</div>
+<div class="tip">Haz clic en cualquier nodo para expandirlo · La jerarquía fluye de arriba hacia abajo</div>
+
+<div class="tree-wrap">
+<ul class="tree">
+
+  <!-- ══ ROOT ══════════════════════════════════════════════════════ -->
+  <li>
+    <div class="node l0" onclick="toggle(this)" style="max-width:500px;min-width:300px;">
+      <div class="nh">
+        <span class="nn">00</span>
+        <div class="nt">
+          <div class="nc">Tema Central · Nivel 0</div>
+          <div class="ntitle">Neurorrehabilitación Motora en la Enfermedad de Parkinson</div>
+        </div>
+        <div class="ntog">+</div>
+      </div>
+      <div class="nprev">La rehabilitación motora como proceso de <strong>modulación neurobiológica activa</strong> mediante neuroplasticidad dependiente de la experiencia: el ejercicio como fármaco biológico endógeno (BDNF / GDNF).</div>
+      <div class="nbody"><div class="ncontent">
+        <div class="ig">
+          <div class="igt" style="color:var(--c0)">Proposición Central</div>
+          <div class="it"><div class="ib"></div><span>La rehabilitación no es apoyo sintomático, sino <strong>modulación neurobiológica</strong> que actúa sobre los circuitos dopaminérgicos</span></div>
+          <div class="it"><div class="ib"></div><span>El ejercicio induce liberación de <strong>BDNF</strong> y <strong>GDNF</strong>, promoviendo sinaptogénesis y reparación neuronal</span></div>
+          <div class="it"><div class="ib"></div><span>Las intervenciones no farmacológicas son capaces de <strong>ralentizar la progresión</strong> de la enfermedad</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- CONNECTOR -->
+    <div class="v-line"></div>
+
+    <!-- ══ LEVEL 1 — 4 main branches ════════════════════════════════ -->
+    <ul class="children" id="l1-bar">
+
+      <!-- ─ BRANCH A: CONDICIONES CAUSALES ─ -->
+      <li class="branch">
+        <div class="branch-vline-top"></div>
+        <div class="node l1a" onclick="toggle(this)">
+          <div class="nh">
+            <span class="nn">01</span>
+            <div class="nt">
+              <div class="nc">Condiciones Causales · Nivel 1</div>
+              <div class="ntitle">Etiología del Desafío Clínico</div>
+            </div>
+            <div class="ntog">+</div>
+          </div>
+          <div class="nprev">Factores patofisiológicos y limitaciones del tratamiento farmacológico que justifican la intervención rehabilitadora.</div>
+          <div class="nbody"><div class="ncontent">
+            <div class="ig">
+              <div class="igt" style="color:var(--c1)">Fisiopatología</div>
+              <div class="it"><div class="ib"></div><span>Degeneración de la <strong>sustancia negra compacta</strong> → pérdida de automaticidad motora</span></div>
+              <div class="it"><div class="ib"></div><span>Déficit en la regulación de <strong>ganglios basales</strong></span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c1)">Limitaciones de la Levodopa</div>
+              <div class="it"><div class="ib"></div><span>Eficaz en bradicinesia y rigidez; impacto <strong>limitado</strong> en inestabilidad postural y marcha</span></div>
+              <div class="it"><div class="ib"></div><span>Uso crónico genera <strong>discinesias</strong></span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c1)">Carga Global</div>
+              <div class="it"><div class="ib"></div><span>Prevalencia proyectada: <strong>12 millones</strong> para 2030</span></div>
+            </div>
+          </div></div>
+        </div>
+        <!-- Level 2 under Causal -->
+        <div class="branch-vline-bot"></div>
+        <ul class="children">
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2a" onclick="toggle(this)" style="max-width:240px;min-width:180px;">
+              <div class="nh">
+                <span class="nn" style="font-size:16px">1.1</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:13px">Insuficiencia Dopaminérgica</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Pérdida de neuronas dopaminérgicas nigroestriatales ≥ 60-80% al momento del diagnóstico clínico</span></div>
+                <div class="it"><div class="ib"></div><span>Alteración en los circuitos de la <strong>vía directa e indirecta</strong> de ganglios basales</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2a2" onclick="toggle(this)" style="max-width:240px;min-width:180px;">
+              <div class="nh">
+                <span class="nn" style="font-size:16px">1.2</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:13px">Deterioro Progresivo</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Síntomas motores: temblor, rigidez, bradicinesia, inestabilidad postural</span></div>
+                <div class="it"><div class="ib"></div><span>Síntomas no motores: depresión, ansiedad, deterioro cognitivo</span></div>
+              </div></div>
+            </div>
+          </li>
+        </ul>
+      </li>
+
+      <!-- ─ BRANCH B: CONTEXTO INTERVINIENTE ─ -->
+      <li class="branch">
+        <div class="branch-vline-top"></div>
+        <div class="node l1b" onclick="toggle(this)">
+          <div class="nh">
+            <span class="nn">02</span>
+            <div class="nt">
+              <div class="nc">Contexto Interviniente · Nivel 1</div>
+              <div class="ntitle">Factores de Implementación</div>
+            </div>
+            <div class="ntog">+</div>
+          </div>
+          <div class="nprev">Variables que modulan la efectividad y adherencia al programa de neurorrehabilitación motora.</div>
+          <div class="nbody"><div class="ncontent">
+            <div class="ig">
+              <div class="igt" style="color:var(--c2)">Adherencia</div>
+              <div class="it"><div class="ib"></div><span>Ejercicio debe ser <strong>motivador y significativo</strong> para evitar abandono</span></div>
+              <div class="it"><div class="ib"></div><span>Persistencia a largo plazo: condición necesaria para efectos neuroplásticos</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c2)">Entorno Terapéutico</div>
+              <div class="it"><div class="ib"></div><span><strong>HPT</strong>: mayor cumplimiento en mayores; elimina desplazamientos</span></div>
+              <div class="it"><div class="ib"></div><span><strong>Telerehabilitación</strong>: elimina barreras geográficas; supervisión remota</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c2)">Perfil del Paciente</div>
+              <div class="it"><div class="ib"></div><span>Depresión y ansiedad como <strong>moduladores negativos</strong> de la respuesta terapéutica</span></div>
+            </div>
+          </div></div>
+        </div>
+        <!-- Level 2 under Context -->
+        <div class="branch-vline-bot"></div>
+        <ul class="children">
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2b" onclick="toggle(this)" style="max-width:240px;min-width:180px;">
+              <div class="nh">
+                <span class="nn" style="font-size:16px">2.1</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:13px">Terapia Domiciliaria (HPT)</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Mayor cumplimiento en pacientes de edad avanzada</span></div>
+                <div class="it"><div class="ib"></div><span>Elimina barreras de transporte y costos asociados</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2b2" onclick="toggle(this)" style="max-width:240px;min-width:180px;">
+              <div class="nh">
+                <span class="nn" style="font-size:16px">2.2</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:13px">Telerehabilitación (TR)</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Supervición remota en tiempo real</span></div>
+                <div class="it"><div class="ib"></div><span>Elimina barreras geográficas; amplía el acceso</span></div>
+              </div></div>
+            </div>
+          </li>
+        </ul>
+      </li>
+
+      <!-- ─ BRANCH C: ESTRATEGIAS ─ -->
+      <li class="branch">
+        <div class="branch-vline-top"></div>
+        <div class="node l1c" onclick="toggle(this)">
+          <div class="nh">
+            <span class="nn">03</span>
+            <div class="nt">
+              <div class="nc">Estrategias de Acción · Nivel 1</div>
+              <div class="ntitle">Intervenciones Terapéuticas</div>
+            </div>
+            <div class="ntog">+</div>
+          </div>
+          <div class="nprev">Tres pilares de intervención con evidencia científica para inducir neuroplasticidad en pacientes con EP.</div>
+          <div class="nbody"><div class="ncontent">
+            <div class="ig">
+              <div class="igt" style="color:var(--c3)">Alta Intensidad y Multimodal</div>
+              <div class="it"><div class="ib"></div><span>Ciclismo &gt;76-80 rpm → mejora UPDRS-III</span></div>
+              <div class="it"><div class="ib"></div><span>NM-FITT®: fuerza + resistencia aeróbica + neuromotor</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c3)">Soporte Tecnológico</div>
+              <div class="it"><div class="ib"></div><span><strong>RVI</strong>: equilibrio seguro sin riesgo de caídas reales</span></div>
+              <div class="it"><div class="ib"></div><span><strong>RAS</strong>: metrónomo/música para cadencia de marcha</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c3)">Modalidades Especializadas</div>
+              <div class="it"><div class="ib"></div><span>Terapia Acuática: Ai Chi, Halliwick</span></div>
+              <div class="it"><div class="ib"></div><span>Escalada deportiva: locomoción vertical → horizontal</span></div>
+            </div>
+          </div></div>
+        </div>
+        <!-- Level 2 under Strategies -->
+        <div class="branch-vline-bot"></div>
+        <ul class="children">
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2c" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">3.1</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Ciclismo de Alta Cadencia</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>&gt;76-80 rpm; mejora significativa en UPDRS-III</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2c2" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">3.2</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Realidad Virtual (RVI)</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Entornos seguros para equilibrio y manipulación sin riesgo real</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2c3" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">3.3</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Estimulación Auditiva (RAS)</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>"Bypass" neurológico de ganglios basales mediante ritmo auditivo</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2c4" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">3.4</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Terapia Acuática</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Ai Chi y Halliwick: flotabilidad + retroalimentación propioceptiva</span></div>
+              </div></div>
+            </div>
+          </li>
+        </ul>
+      </li>
+
+      <!-- ─ BRANCH D: CONSECUENCIAS ─ -->
+      <li class="branch">
+        <div class="branch-vline-top"></div>
+        <div class="node l1d" onclick="toggle(this)">
+          <div class="nh">
+            <span class="nn">04</span>
+            <div class="nt">
+              <div class="nc">Consecuencias · Nivel 1</div>
+              <div class="ntitle">Resultados Clínicos</div>
+            </div>
+            <div class="ntog">+</div>
+          </div>
+          <div class="nprev">Evidencia cuantificable de eficacia en cuatro dimensiones validadas por escalas clínicas estandarizadas.</div>
+          <div class="nbody"><div class="ncontent">
+            <div class="ig">
+              <div class="igt" style="color:var(--c4)">Motoras</div>
+              <div class="it"><div class="ib"></div><span>↓ MDS-UPDRS III · ↑ Mini-BESTest · ↑ TUG</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c4)">Calidad de Vida</div>
+              <div class="it"><div class="ib"></div><span>Movilidad, AVD y bienestar emocional — PDQ-39</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c4)">Prevención Secundaria</div>
+              <div class="it"><div class="ib"></div><span>↓ Riesgo de caídas y fracturas</span></div>
+              <div class="it"><div class="ib"></div><span>Prevención de hospitalizaciones</span></div>
+            </div>
+            <div class="ig">
+              <div class="igt" style="color:var(--c4)">Neuroprotección</div>
+              <div class="it"><div class="ib"></div><span>Estabilización velocidad de marcha</span></div>
+              <div class="it"><div class="ib"></div><span>Preservación de funciones ejecutivas y memoria visual</span></div>
+            </div>
+          </div></div>
+        </div>
+        <!-- Level 2 under Consequences -->
+        <div class="branch-vline-bot"></div>
+        <ul class="children">
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2d" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">4.1</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Mejoras Motoras</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>MDS-UPDRS III, Mini-BESTest, TUG con reducción estadísticamente significativa</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2d2" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">4.2</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Calidad de Vida</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>PDQ-39: mejoras en movilidad, AVD y bienestar emocional</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2d3" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">4.3</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Prevención Secundaria</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>↓ Riesgo de caídas, fracturas y hospitalizaciones</span></div>
+              </div></div>
+            </div>
+          </li>
+          <li class="branch">
+            <div class="branch-vline-top"></div>
+            <div class="node l2d4" onclick="toggle(this)" style="max-width:210px;min-width:165px;">
+              <div class="nh">
+                <span class="nn" style="font-size:14px">4.4</span>
+                <div class="nt">
+                  <div class="nc">Sub-tema</div>
+                  <div class="ntitle" style="font-size:12.5px">Neuroprotección Funcional</div>
+                </div>
+                <div class="ntog" style="font-size:11px">+</div>
+              </div>
+              <div class="nbody"><div class="ncontent">
+                <div class="it"><div class="ib"></div><span>Preservación de funciones ejecutivas y memoria visual</span></div>
+              </div></div>
+            </div>
+          </li>
+        </ul>
+      </li>
+
+    </ul><!-- /children level 1 -->
+  </li>
+</ul><!-- /tree -->
+</div>
+
+<!-- SYNTHESIS -->
+<div class="synth-wrap">
+  <div class="synth">
+    <div class="synth-label">Síntesis Jerárquica</div>
+    <div>
+      <div class="synth-title">Síntesis Integradora del Mapa Jerárquico</div>
+      <p class="synth-text">La neurorrehabilitación motora en el Parkinson se organiza jerárquicamente desde un <strong>tema central</strong> —la neuroplasticidad dependiente de la experiencia— que se ramifica en cuatro categorías de primer nivel: las <strong>condiciones causales</strong> que motivan la intervención, el <strong>contexto interviniente</strong> que modula su implementación, las <strong>estrategias de acción</strong> con sus sub-intervenciones específicas, y las <strong>consecuencias</strong> medibles en múltiples dimensiones clínicas. La integración sinérgica de tecnología (RVI/RAS) con protocolos de alta intensidad cataliza la neuroplasticidad, permitiendo que los pacientes recuperen <strong>autonomía funcional</strong> y mejoren su autopercepción de salud.</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Fuente: Revisión sistemática — Neurorrehabilitación Motora en EP &nbsp;·&nbsp;
+  Escalas validadas: MDS-UPDRS III · Mini-BESTest · TUG · PDQ-39 &nbsp;·&nbsp;
+  Elaboración académica · Codificación jerárquica
+</footer>
+
+<script>
+function toggle(node) {
+  const wasOpen = node.classList.contains('open');
+  node.classList.toggle('open', !wasOpen);
+}
+
+// Draw horizontal connector bars dynamically
+function drawBars() {
+  document.querySelectorAll('ul.children').forEach(ul => {
+    const branches = Array.from(ul.children).filter(li => li.classList.contains('branch'));
+    if (branches.length < 2) return;
+    const ulRect = ul.getBoundingClientRect();
+    const scrollTop = window.scrollY;
+    const scrollLeft = window.scrollX;
+    // Find first and last branch top positions
+    const first = branches[0].getBoundingClientRect();
+    const last = branches[branches.length-1].getBoundingClientRect();
+    // Create or update bar
+    let bar = ul.querySelector('.h-bar');
+    if (!bar) { bar = document.createElement('div'); bar.className = 'h-bar'; ul.style.position='relative'; ul.appendChild(bar); }
+    const left = first.left + first.width/2 - ulRect.left;
+    const right = last.left + last.width/2 - ulRect.left;
+    bar.style.left = left + 'px';
+    bar.style.width = (right - left) + 'px';
+    bar.style.top = '0px';
+  });
+}
+
+window.addEventListener('load', drawBars);
+window.addEventListener('resize', drawBars);
+</script>
+</body>
+</html>
